@@ -1,2 +1,2 @@
 # bstar
-C++14 binary star pattern for primery-backup HA
+C++14 binary star pattern for primary-backup HA.
