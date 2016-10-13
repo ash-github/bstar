@@ -1,4 +1,5 @@
 #include <iostream>
+#include <atomic>
 #include <string>
 #include "fsm.hpp"
 #include <rest_rpc/rpc.hpp>
@@ -90,6 +91,7 @@ void test_fsm(fsm_t fsm)
 namespace client
 {
 	TIMAX_DEFINE_PROTOCOL(controller, int(int));
+	TIMAX_DEFINE_PROTOCOL(echo, std::string(const std::string&));
 }
 
 int main()
@@ -129,6 +131,27 @@ int main()
 		fsm.state = State::STATE_BACKUP;
 		std::cout << "I: current state STATE_BACKUP\n";
 	}
+	else if (str == "-c")
+	{
+		async_client client;
+		auto endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5001);
+		std::atomic<bool> need_break = false;
+		while (!need_break)
+		{
+			client.call(endpoint, client::echo, "test").on_ok([](const std::string& str)
+			{
+				std::cout << str << std::endl;
+			}).on_error([&need_break](auto const& error)
+			{
+				need_break = true;
+				std::cout << error.get_error_message() << std::endl;
+			});
+
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}	
+
+		return -1;
+	}
 	else 
 	{
 		std::cout << "Usage: bstar { -p | -b }\n";
@@ -136,9 +159,16 @@ int main()
 	}
 
 	sp->register_handler("controller", [](int i) { return i; }, [&sp](auto conn, int r) { sp->pub("controller", r); });
-	
+	sp->register_handler("echo", [](const std::string& str) 
+	{ 
+		return str; 
+	}, [&fsm](auto conn, auto s) {
+		fsm.event = Event::CLIENT_REQUEST;
+		if (fsm.state_machine())
+			conn->close();
+	});
 	sp->start();
-	int64_t send_state_at = fsm.get_current_millis() + fsm.HEARTBEAT;
+	std::atomic<int64_t> send_state_at = fsm.get_current_millis() + fsm.HEARTBEAT;
 	std::thread thd([&pub_client, &pub_endpoint, &fsm,&send_state_at]
 	{
 		while (true)
