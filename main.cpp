@@ -92,10 +92,12 @@ namespace client
 	TIMAX_DEFINE_PROTOCOL(controller, int(int));
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-	std::string str;
-	std::cin >> str;
+	if (2 != argc)
+		return -1;
+
+	std::string str = argv[1];
 
 	timax::log::get().init("rest_rpc_server.lg");
 	using server_t = timax::rpc::server<timax::rpc::msgpack_codec>;
@@ -155,7 +157,7 @@ int main()
 				std::cout << e.get_error_message() << std::endl;
 			}
 
-			this_thread::sleep_for(std::chrono::milliseconds(1000));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		}
 	});
 	
