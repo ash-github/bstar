@@ -21,6 +21,20 @@ enum Event
 	CLIENT_REQUEST          //  Client makes request
 };
 
+const std::int64_t HEARTBEAT = 1000;          //  In msecs
+											  //  The heart of the Binary Star design is its finite-state machine (FSM).
+											  //  The FSM runs one event at a time. We apply an event to the current state,
+											  //  which checks if the event is accepted, and if so, sets a new state:
+
+int64_t get_current_millis()
+{
+	auto n = std::chrono::system_clock::now();
+	auto m = n.time_since_epoch();
+	auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(m).count();
+	//auto const msecs = diff % 1000;
+	return diff;
+}
+
 struct fsm_t
 {
 	//  Our finite state machine
@@ -30,10 +44,6 @@ struct fsm_t
 
 							   //  We send state information this often
 							   //  If peer doesn't respond in two heartbeats, it is 'dead'
-	const std::int64_t HEARTBEAT = 1000;          //  In msecs
-											   //  The heart of the Binary Star design is its finite-state machine (FSM).
-											   //  The FSM runs one event at a time. We apply an event to the current state,
-											   //  which checks if the event is accepted, and if so, sets a new state:
 public:
 
 	bool state_machine()
@@ -85,12 +95,14 @@ public:
 				//  Peer is restarting - become active, peer will go passive
 				std::cout << "I: primary (passive) is restarting, ready active\n";
 				state = State::STATE_ACTIVE;
+				std::cout << "I: current state STATE_ACTIVE\n";
 			}
 			else if (event == Event::PEER_BACKUP)
 			{
 				//  Peer is restarting - become active, peer will go passive
 				std::cout << "I: backup (passive) is restarting, ready active\n";
 				state = State::STATE_ACTIVE;
+				std::cout << "I: current state STATE_ACTIVE\n";
 			}
 			else if (event == Event::PEER_PASSIVE)
 			{
@@ -108,6 +120,7 @@ public:
 					//  If peer is dead, switch to the active state
 					std::cout << "I: failover successful, ready active\n";
 					state = State::STATE_ACTIVE;
+					std::cout << "I: current state STATE_ACTIVE\n";
 				}
 				else
 					//  If peer is alive, reject connections
@@ -117,12 +130,4 @@ public:
 		return exception;
 	}
 
-	int64_t get_current_millis()
-	{
-		auto n = std::chrono::system_clock::now();
-		auto m = n.time_since_epoch();
-		auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(m).count();
-		//auto const msecs = diff % 1000;
-		return diff;
-	}
 };
