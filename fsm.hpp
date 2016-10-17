@@ -123,8 +123,11 @@ public:
 					std::cout << "I: current state STATE_ACTIVE\n";
 				}
 				else
+				{
 					//  If peer is alive, reject connections
 					exception = true;
+					std::cout << "I: reject connections\n";
+				}					
 			}
 		}
 		return exception;

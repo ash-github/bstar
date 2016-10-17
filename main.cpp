@@ -137,14 +137,13 @@ int main(int argc, char* argv[])
 
 	//register busniess logic
 	sp->register_handler("heartbeat", [](int state) { return state; }, [&sp](auto conn, int state) { sp->pub("heartbeat", state); });
-	sp->register_handler("echo", [](const std::string& str) 
+	sp->register_handler("echo", [&fsm](const std::string& str)
 	{ 
-		return str; 
-	}, [&fsm](auto conn, auto s) 
-	{
 		fsm.event = Event::CLIENT_REQUEST;
 		if (fsm.state_machine())
-			conn->close();
+			throw timax::rpc::exception(timax::rpc::error_code::FAIL, "reject");
+
+		return str; 
 	});
 	sp->start();
 
