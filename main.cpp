@@ -37,18 +37,24 @@ bool init_role(fsm_t& fsm, std::unique_ptr<server_t>& sp, boost::asio::ip::tcp::
 	else if (input == "-c")
 	{
 		async_client client;
-		auto endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5001);
-		
+		//auto main_endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5001);
+		//auto bake_endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5002);
+		auto endpoints = timax::rpc::get_tcp_endpoints("127.0.0.1:5001,127.0.0.1:5002");
+		auto it = endpoints.begin();
 		while (b)
 		{
-			client.call(endpoint, client::echo, "test").on_ok([](const std::string& str)
+			client.call(*it, client::echo, "test").on_ok([](const std::string& str)
 			{
 				std::cout << str << std::endl;
-			}).on_error([&b](auto const& error)
+			}).on_error([&b,&endpoints,&it](auto const& error)
 			{
-				b = false;
+				//b = false;
+				it++;
+				if(it== endpoints.end())
+					it = endpoints.begin();
+
 				std::cout << error.get_error_message() << std::endl;
-			});
+			}).timeout(std::chrono::milliseconds(2000));
 
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
@@ -108,10 +114,15 @@ void handle_recv_msg(fsm_t& fsm, async_client& sub_client, boost::asio::ip::tcp:
 	});
 }
 
+int add(int a, int b)
+{
+	return a + b;
+}
+
 int main(int argc, char* argv[])
 {
-	if (argc < 2)
-		return -1;
+	//if (argc < 2)
+	//	return -1;
 
 	std::string cmd = argv[1];
 
