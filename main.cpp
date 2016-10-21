@@ -6,7 +6,8 @@
 
 namespace client
 {
-	TIMAX_DEFINE_PROTOCOL(heartbeat, int(int));
+	//TIMAX_DEFINE_PROTOCOL(heartbeat, int(int));
+	TIMAX_DEFINE_FORWARD(heartbeat, int);
 	TIMAX_DEFINE_PROTOCOL(echo, std::string(const std::string&));
 }
 
@@ -43,18 +44,36 @@ bool init_role(fsm_t& fsm, std::unique_ptr<server_t>& sp, boost::asio::ip::tcp::
 		auto it = endpoints.begin();
 		while (b)
 		{
-			client.call(*it, client::echo, "test").on_ok([](const std::string& str)
+			//client.call(*it, client::echo, "test").on_ok([](const std::string& str)
+			//{
+			//	std::cout << str << std::endl;
+			//}).on_error([&b,&endpoints,&it](auto const& error)
+			//{
+			//	//b = false;
+			//	it++;
+			//	if(it== endpoints.end())
+			//		it = endpoints.begin();
+			//
+			//	std::cout << error.get_error_message() << std::endl;
+			//}).timeout(std::chrono::milliseconds(2000));
+			using namespace std::chrono_literals;
+			try
 			{
+				auto task = client.call(*it, client::echo, "test");
+				auto str = task.get(2s);
 				std::cout << str << std::endl;
-			}).on_error([&b,&endpoints,&it](auto const& error)
+			}
+			catch (timax::rpc::exception const& error)
 			{
-				//b = false;
-				it++;
-				if(it== endpoints.end())
-					it = endpoints.begin();
-
-				std::cout << error.get_error_message() << std::endl;
-			}).timeout(std::chrono::milliseconds(2000));
+				auto ec = error.get_error_code();
+				if (timax::rpc::error_code::BADCONNECTION == ec ||
+					timax::rpc::error_code::TIMEOUT == ec)
+				{
+					++it;
+					if (endpoints.end() == it)
+						it = endpoints.begin();
+				}
+			}
 
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
@@ -77,7 +96,7 @@ void send_heartbeat(fsm_t& fsm, async_client& pub_client, boost::asio::ip::tcp::
 			try
 			{
 				send_state_at = get_current_millis() + HEARTBEAT;
-				auto task = pub_client.call(pub_endpoint, client::heartbeat, fsm.state);
+				auto task = pub_client.pub(pub_endpoint, client::heartbeat, fsm.state);
 				task.wait();
 			}
 			catch (timax::rpc::exception const& e)
@@ -147,7 +166,8 @@ int main(int argc, char* argv[])
 		return -1;
 
 	//register busniess logic
-	sp->register_handler("heartbeat", [](int state) { return state; }, [&sp](auto conn, int state) { sp->pub("heartbeat", state); });
+	//sp->register_handler("heartbeat", [](int state) { return state; }, [&sp](auto conn, int state) { sp->pub("heartbeat", state); });
+	sp->register_forward_handler("heartbeat", [&sp](char const* data, size_t size) { sp->pub("heartbeat", data, size); });
 	sp->register_handler("echo", [&fsm](const std::string& str)
 	{ 
 		fsm.event = Event::CLIENT_REQUEST;
