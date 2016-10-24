@@ -40,28 +40,16 @@ bool init_role(fsm_t& fsm, std::unique_ptr<server_t>& sp, boost::asio::ip::tcp::
 		async_client client;
 		//auto main_endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5001);
 		//auto bake_endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5002);
-		auto endpoints = timax::rpc::get_tcp_endpoints("127.0.0.1:5001,127.0.0.1:5002");
+		auto endpoints = timax::rpc::get_tcp_endpoints("127.0.0.1:5001|127.0.0.1:5002");
 		auto it = endpoints.begin();
 		while (b)
 		{
-			//client.call(*it, client::echo, "test").on_ok([](const std::string& str)
-			//{
-			//	std::cout << str << std::endl;
-			//}).on_error([&b,&endpoints,&it](auto const& error)
-			//{
-			//	//b = false;
-			//	it++;
-			//	if(it== endpoints.end())
-			//		it = endpoints.begin();
-			//
-			//	std::cout << error.get_error_message() << std::endl;
-			//}).timeout(std::chrono::milliseconds(2000));
 			using namespace std::chrono_literals;
 			try
 			{
 				auto task = client.call(*it, client::echo, "test");
 				auto str = task.get(2s);
-				std::cout << str << std::endl;
+				std::cout << str << "" << *it << std::endl;
 			}
 			catch (timax::rpc::exception const& error)
 			{
@@ -72,6 +60,10 @@ bool init_role(fsm_t& fsm, std::unique_ptr<server_t>& sp, boost::asio::ip::tcp::
 					++it;
 					if (endpoints.end() == it)
 						it = endpoints.begin();
+				}
+				else
+				{
+					std::cout << static_cast<int>(ec) << error.get_error_message() << std::endl;
 				}
 			}
 
@@ -93,11 +85,12 @@ void send_heartbeat(fsm_t& fsm, async_client& pub_client, boost::asio::ip::tcp::
 	{
 		while (true)
 		{
+			using namespace std::chrono_literals;
 			try
 			{
 				send_state_at = get_current_millis() + HEARTBEAT;
 				auto task = pub_client.pub(pub_endpoint, client::heartbeat, fsm.state);
-				task.wait();
+				task.wait(1s);
 			}
 			catch (timax::rpc::exception const& e)
 			{
