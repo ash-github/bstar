@@ -20,7 +20,7 @@ bool init_role(fsm_t& fsm, std::unique_ptr<server_t>& sp, boost::asio::ip::tcp::
 	if (input == "-p")
 	{
 		std::cout << "I: Primary active, waiting for backup (passive)\n";
-		sp = std::make_unique<server_t>(5001, std::thread::hardware_concurrency());
+		sp = std::make_unique<server_t>(5001, 4);
 		pub_endpoint = timax::rpc::get_tcp_endpoint(peer_ip, 5002); //remote server
 		sub_endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5001); //sub self
 		fsm.state = State::STATE_PRIMARY;
@@ -29,7 +29,7 @@ bool init_role(fsm_t& fsm, std::unique_ptr<server_t>& sp, boost::asio::ip::tcp::
 	else if (input == "-b")
 	{
 		std::cout << "I: Backup passive, waiting for primary (active)\n";
-		sp = std::make_unique<server_t>(5002, std::thread::hardware_concurrency());
+		sp = std::make_unique<server_t>(5002, 4);
 		pub_endpoint = timax::rpc::get_tcp_endpoint(peer_ip, 5001); //remote server
 		sub_endpoint = timax::rpc::get_tcp_endpoint("127.0.0.1", 5002); //sub self
 		fsm.state = State::STATE_BACKUP;
@@ -90,7 +90,7 @@ void send_heartbeat(fsm_t& fsm, async_client& pub_client, boost::asio::ip::tcp::
 			{
 				send_state_at = get_current_millis() + HEARTBEAT;
 				auto task = pub_client.pub(pub_endpoint, client::heartbeat, fsm.state);
-				task.wait(1s);
+				task.wait();
 			}
 			catch (timax::rpc::exception const& e)
 			{
@@ -133,8 +133,8 @@ int add(int a, int b)
 
 int main(int argc, char* argv[])
 {
-	//if (argc < 2)
-	//	return -1;
+	if (argc < 2)
+		return -1;
 
 	std::string cmd = argv[1];
 

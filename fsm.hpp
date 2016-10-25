@@ -77,7 +77,10 @@ public:
 				std::cout << "I: current state STATE_PASSIVE\n";
 			}
 			else if (event == Event::CLIENT_REQUEST)//  Reject client connections when acting as backup
+			{
+				std::cout << "I: exception, acting as backup\n";
 				exception = true;
+			}
 		}
 		else if (state == State::STATE_ACTIVE) //These are the ACTIVE and PASSIVE states:
 		{
